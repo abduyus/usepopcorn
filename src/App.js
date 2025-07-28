@@ -54,7 +54,7 @@ const average = (arr) =>
 const KEY = "970b89c2";
 
 export default function App() {
-  const [query, setQuery] = useState("iron man");
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +65,7 @@ export default function App() {
     id === selectedId ? setSelectedId(null) : setSelectedId(id);
   }
 
-  function handleCLoseMovie() {
+  function handleCloseMovie() {
     setSelectedId(null);
   }
 
@@ -79,12 +79,15 @@ export default function App() {
 
   useEffect(
     function () {
+      const controller = new AbortController();
+
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError("");
           const res = await fetch(
             `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
+            { signal: controller.signal },
           );
 
           if (!res.ok)
@@ -95,9 +98,13 @@ export default function App() {
           if (data.Response === "False") throw new Error("Movie not found");
 
           setMovies(data.Search);
+          setError("");
         } catch (err) {
-          console.error(err.message);
-          setError(err.message);
+          console.log(err.message);
+
+          if (err.name !== "AbortError") {
+            setError(err.message);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -108,8 +115,12 @@ export default function App() {
         setError("");
         return;
       }
-
+      handleCloseMovie();
       fetchMovies();
+
+      return function () {
+        controller.abort();
+      };
     },
     [query],
   );
@@ -134,7 +145,7 @@ export default function App() {
         <Box>
           {selectedId ? (
             <MovieDetail
-              onCloseMovie={handleCLoseMovie}
+              onCloseMovie={handleCloseMovie}
               selectedID={selectedId}
               onAddWatched={handleAddWatched}
               watched={watched}
@@ -280,7 +291,6 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
   const watchedUserrating = watched.find(
     (movie) => movie.imdbID === selectedID,
   )?.userRating;
-  console.log(watchedUserrating);
 
   const {
     Title: title,
@@ -294,7 +304,6 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
     Director: director,
     Genre: genre,
   } = movie;
-  console.log(title, year);
 
   function handleAdd() {
     const newWatchedMovie = {
@@ -311,6 +320,22 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
     onCloseMovie();
   }
 
+  useEffect(
+    function () {
+      function callback(e) {
+        if (e.code === "Escape") {
+          onCloseMovie();
+        }
+      }
+      document.addEventListener("keydown", callback);
+
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
+    },
+    [onCloseMovie],
+  );
+
   useEffect(() => {
     async function getMovieDetails() {
       setIsLoading(true);
@@ -319,7 +344,6 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
       );
 
       const data = await res.json();
-      console.log(data);
       setMovie(data);
       setIsLoading(false);
     }
@@ -329,6 +353,11 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
   useEffect(() => {
     if (!title) return;
     document.title = `Movie | ${title}`;
+
+    return function () {
+      document.title = "usePopcorn";
+      // console.log(`cleanup effect for movie ${title}`);
+    };
   }, [title]);
 
   return (
