@@ -9,10 +9,14 @@ const KEY = "970b89c2";
 export default function App() {
   const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState(null);
+  // const [watched, setWatched] = useState([]);
+  const [watched, setWatched] = useState(function () {
+    const storedValue = JSON.parse(localStorage.getItem("watched"));
+    return storedValue;
+  });
 
   function handleSelectMovie(id) {
     id === selectedId ? setSelectedId(null) : setSelectedId(id);
@@ -29,6 +33,10 @@ export default function App() {
   function handleDeleteWatched(id) {
     setWatched((movies) => movies.filter((movie) => movie.imdbID !== id));
   }
+
+  useEffect(() => {
+    localStorage.setItem("watched", JSON.stringify(watched));
+  }, [watched]);
 
   useEffect(
     function () {
@@ -258,6 +266,8 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
     Genre: genre,
   } = movie;
 
+  // const [avgRating, setAvgRating] = useState(0);
+
   function handleAdd() {
     const newWatchedMovie = {
       imdbID: selectedID,
@@ -271,6 +281,9 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
 
     onAddWatched(newWatchedMovie);
     onCloseMovie();
+
+    // setAvgRating(Number(imdbRating));
+    // setAvgRating((avgRating) => (avgRating + userRating) / 2);
   }
 
   useEffect(
@@ -335,6 +348,8 @@ function MovieDetail({ selectedID, onCloseMovie, onAddWatched, watched }) {
               </p>
             </div>
           </header>
+
+          {/*<p>{avgRating}</p>*/}
 
           <section>
             <div className={"rating"}>
